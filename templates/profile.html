@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block title %}Mi Perfil - Panlen{% endblock %}
+{% block page_title %}Mi Perfil{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">Información Personal</h6>
+            </div>
+            <div class="card-body">
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Nombre</label>
+                                <input type="text" class="form-control" name="first_name" 
+                                    value="{{ user.first_name }}" placeholder="Tu nombre">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Apellido</label>
+                                <input type="text" class="form-control" name="last_name" 
+                                    value="{{ user.last_name }}" placeholder="Tu apellido">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label">Correo Electrónico</label>
+                        <input type="email" class="form-control" name="email" 
+                            value="{{ user.email }}" placeholder="tu@email.com">
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label">Nombre de Usuario</label>
+                        <input type="text" class="form-control" value="{{ user.username }}" readonly>
+                        <small class="text-muted">El nombre de usuario no se puede cambiar</small>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label">Tipo de Usuario</label>
+                        <input type="text" class="form-control" value="{{ user.get_user_type_display }}" readonly>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <div class="mb-4">
+                        <h6 class="mb-3">Cambiar Contraseña</h6>
+                        <div class="mb-3">
+                            <label class="form-label">Nueva Contraseña</label>
+                            <input type="password" class="form-control" name="new_password" 
+                                placeholder="Dejar en blanco para mantener la actual">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Confirmar Nueva Contraseña</label>
+                            <input type="password" class="form-control" name="confirm_password" 
+                                placeholder="Confirma la nueva contraseña">
+                        </div>
+                    </div>
+
+                    <div class="text-end">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Guardar Cambios
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {% if user.user_type == 'moderator' %}
+        <div class="card mt-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">Mis Cursos</h6>
+                <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createCursoModal">
+                    <i class="fas fa-plus me-2"></i>Crear Curso
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Descripción</th>
+                                <th>Miembros</th>
+                                <th>Documentos</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for curso in user.moderated_courses.all %}
+                            <tr>
+                                <td>{{ curso.name }}</td>
+                                <td>{{ curso.description }}</td>
+                                <td>{{ curso.members.count }}</td>
+                                <td>{{ curso.documents.count }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center">No moderas ningún curso</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal para crear curso -->
+        <div class="modal fade" id="createCursoModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="modal-header">
+                            <h5 class="modal-title">Crear Nuevo Curso</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label">Nombre del Curso</label>
+                                {{ curso_form.name }}
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Descripción</label>
+                                {{ curso_form.description }}
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" name="create_curso" class="btn btn-primary">Crear Curso</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if user.user_type == 'user' %}
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="mb-0">Mis Cursos</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Descripción</th>
+                                <th>Moderadores</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for curso in user.courses.all %}
+                            <tr>
+                                <td>{{ curso.name }}</td>
+                                <td>{{ curso.description }}</td>
+                                <td>
+                                    {% for mod in curso.moderators.all %}
+                                        {{ mod.get_full_name|default:mod.username }}{% if not forloop.last %}, {% endif %}
+                                    {% endfor %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3" class="text-center">No perteneces a ningún curso</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

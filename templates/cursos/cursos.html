@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+
+{% block title %}Cursos - Panlen{% endblock %}
+{% block page_title %}Cursos{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">Lista de Cursos</h6>
+                {% if user.is_superuser or user.user_type == 'admin' %}
+                <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createCourseModal">
+                    <i class="fas fa-plus me-2"></i>Crear Curso
+                </button>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Descripción</th>
+                                <th>Estado</th>
+                                <th>Miembros</th>
+                                {% if user.is_superuser or user.user_type == 'admin' %}
+                                <th>Acciones</th>
+                                {% endif %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for curso in cursos %}
+                            <tr>
+                                <td>{{ curso.name }}</td>
+                                <td>{{ curso.description|default:"-" }}</td>
+                                <td>
+                                    <span class="badge bg-{% if curso.active %}success{% else %}danger{% endif %}">
+                                        {% if curso.active %}Activo{% else %}Inactivo{% endif %}
+                                    </span>
+                                </td>
+                                <td>
+                                    <small class="text-muted">
+                                        <i class="fas fa-users"></i> {{ curso.members.count }} estudiantes<br>
+                                        <i class="fas fa-chalkboard-teacher"></i> {{ curso.moderators.count }} profesores
+                                    </small>
+                                </td>
+                                {% if user.is_superuser or user.user_type == 'admin' %}
+                                <td>
+                                    <div class="btn-group">
+                                        <button type="button" class="btn btn-sm btn-outline-primary" 
+                                                onclick="editCourse('{{ curso.id }}', '{{ curso.name }}', '{{ curso.description }}')"
+                                                title="Editar curso">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <a href="{% url 'manage_curso_members' curso.id %}" 
+                                           class="btn btn-sm btn-outline-info"
+                                           title="Gestionar miembros">
+                                            <i class="fas fa-users"></i>
+                                        </a>
+                                        <button type="button" 
+                                                class="btn btn-sm btn-outline-{% if curso.active %}warning{% else %}success{% endif %}"
+                                                onclick="toggleCourseStatus('{{ curso.id }}')"
+                                                title="{% if curso.active %}Deshabilitar{% else %}Habilitar{% endif %} curso">
+                                            <i class="fas fa-power-off"></i>
+                                        </button>
+                                        <button type="button" 
+                                                class="btn btn-sm btn-outline-danger"
+                                                onclick="deleteCourse('{{ curso.id }}', '{{ curso.name }}')"
+                                                title="Eliminar curso">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                                {% endif %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para crear curso -->
+<div class="modal fade" id="createCourseModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Crear Nuevo Curso</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'create_curso' %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="courseName" class="form-label">Nombre del Curso</label>
+                        <input type="text" class="form-control" id="courseName" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="courseDescription" class="form-label">Descripción</label>
+                        <textarea class="form-control" id="courseDescription" name="description" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Crear Curso</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para editar curso -->
+<div class="modal fade" id="editCourseModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar Curso</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editCourseForm" method="post">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="editCourseName" class="form-label">Nombre del Curso</label>
+                        <input type="text" class="form-control" id="editCourseName" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editCourseDescription" class="form-label">Descripción</label>
+                        <textarea class="form-control" id="editCourseDescription" name="description" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function editCourse(courseId, name, description) {
+    const form = document.getElementById('editCourseForm');
+    form.action = "{% url 'edit_curso' curso_id=0 %}".replace('0', courseId);
+    document.getElementById('editCourseName').value = name;
+    document.getElementById('editCourseDescription').value = description || '';
+    new bootstrap.Modal(document.getElementById('editCourseModal')).show();
+}
+
+function toggleCourseStatus(courseId) {
+    if (confirm('¿Estás seguro de que deseas cambiar el estado de este curso?')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = "{% url 'toggle_curso_status' curso_id=0 %}".replace('0', courseId);
+        
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        form.appendChild(csrfInput);
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function deleteCourse(courseId, courseName) {
+    if (confirm(`¿Estás seguro de que deseas eliminar el curso "${courseName}"?\nEsta acción no se puede deshacer.`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = "{% url 'delete_curso' curso_id=0 %}".replace('0', courseId);
+        
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        form.appendChild(csrfInput);
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
+{% endblock %}

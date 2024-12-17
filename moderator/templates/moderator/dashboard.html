@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}Panel del Profesor - Panlen{% endblock %}
+{% block page_title %}Panel del Profesor{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Mis Cursos Asignados</h5>
+                <span class="badge bg-light text-primary">{{ cursos.count }} cursos</span>
+            </div>
+            <div class="card-body">
+                {% if cursos %}
+                <div class="row">
+                    {% for curso in cursos %}
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100 curso-card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5 class="card-title mb-0">{{ curso.name }}</h5>
+                                <span class="badge bg-primary">{{ curso.members.count }} estudiantes</span>
+                            </div>
+                            <div class="card-body">
+                                <p class="card-text text-muted mb-4">{{ curso.description|default:"Sin descripción"|truncatewords:30 }}</p>
+                                
+                                <div class="student-list">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h6 class="mb-0">Lista de Estudiantes</h6>
+                                        <a href="{% url 'moderator:manage_students' curso.id %}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-user-graduate"></i>
+                                        </a>
+                                    </div>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Nombre</th>
+                                                    <th>Usuario</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for student in curso.members.all|slice:":5" %}
+                                                <tr>
+                                                    <td>{{ student.get_full_name|default:student.username }}</td>
+                                                    <td class="text-muted">{{ student.username }}</td>
+                                                </tr>
+                                                {% empty %}
+                                                <tr>
+                                                    <td colspan="2" class="text-center text-muted">
+                                                        No hay estudiantes inscritos
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                        {% if curso.members.count > 5 %}
+                                        <div class="text-center">
+                                            <small class="text-muted">
+                                                Y {{ curso.members.count|add:"-5" }} estudiantes más...
+                                                <a href="{% url 'moderator:curso_detail' curso.id %}" class="text-primary">Ver todos</a>
+                                            </small>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-footer bg-transparent">
+                                <a href="{% url 'moderator:curso_detail' curso.id %}" class="btn btn-primary w-100">
+                                    <i class="fas fa-eye me-2"></i>Ver Detalles del Curso
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-book-reader fa-3x mb-3 text-muted"></i>
+                    <h5>No tienes cursos asignados</h5>
+                    <p class="text-muted">Contacta al administrador para que te asigne cursos.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.curso-card {
+    transition: transform 0.2s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.curso-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid rgba(0,0,0,0.125);
+}
+.table-sm td, .table-sm th {
+    padding: 0.3rem;
+    font-size: 0.875rem;
+}
+.badge {
+    font-weight: 500;
+}
+</style>
+{% endblock %}

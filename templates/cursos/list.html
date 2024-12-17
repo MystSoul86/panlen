@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+
+{% block title %}Cursos - Panlen{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+<div class="container-fluid px-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3">Cursos</h1>
+        {% if user.is_superuser or user.user_type == 'admin' %}
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createCourseModal">
+            <i class="fas fa-plus"></i> Nuevo Curso
+        </button>
+        {% endif %}
+    </div>
+
+    <div class="row">
+        {% for curso in cursos %}
+        <div class="col-xl-4 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="card-title mb-0">{{ curso.name }}</h5>
+                        {% if user.is_superuser or user.user_type == 'admin' %}
+                        <div class="dropdown">
+                            <button class="btn btn-link text-secondary" type="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="#" onclick="editCourse('{{ curso.id }}', '{{ curso.name }}', '{{ curso.description }}')">
+                                    <i class="fas fa-edit"></i> Editar
+                                </a></li>
+                                <li><a class="dropdown-item" href="{% url 'manage_curso_members' curso.id %}">
+                                    <i class="fas fa-users"></i> Gestionar Miembros
+                                </a></li>
+                                <li><a class="dropdown-item text-danger" href="#" onclick="toggleCourseStatus('{{ curso.id }}')">
+                                    <i class="fas fa-toggle-on"></i> Cambiar Estado
+                                </a></li>
+                            </ul>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <p class="card-text">{{ curso.description|default:"Sin descripción" }}</p>
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            <i class="fas fa-users"></i> {{ curso.members.count }} estudiantes
+                        </small>
+                        <br>
+                        <small class="text-muted">
+                            <i class="fas fa-chalkboard-teacher"></i> {{ curso.moderators.count }} profesores
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info">
+                No hay cursos disponibles.
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Modal para crear curso -->
+<div class="modal fade" id="createCourseModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Crear Nuevo Curso</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'create_curso' %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="courseName" class="form-label">Nombre del Curso</label>
+                        <input type="text" class="form-control" id="courseName" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="courseDescription" class="form-label">Descripción</label>
+                        <textarea class="form-control" id="courseDescription" name="description" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Crear Curso</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para editar curso -->
+<div class="modal fade" id="editCourseModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar Curso</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editCourseForm" method="post">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="editCourseName" class="form-label">Nombre del Curso</label>
+                        <input type="text" class="form-control" id="editCourseName" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editCourseDescription" class="form-label">Descripción</label>
+                        <textarea class="form-control" id="editCourseDescription" name="description" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function editCourse(courseId, name, description) {
+    const form = document.getElementById('editCourseForm');
+    form.action = "{% url 'edit_curso' curso_id=0 %}".replace('0', courseId);
+    document.getElementById('editCourseName').value = name;
+    document.getElementById('editCourseDescription').value = description;
+    new bootstrap.Modal(document.getElementById('editCourseModal')).show();
+}
+
+function toggleCourseStatus(courseId) {
+    if (confirm('¿Estás seguro de que deseas cambiar el estado de este curso?')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = "{% url 'toggle_curso_status' curso_id=0 %}".replace('0', courseId);
+        
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        form.appendChild(csrfInput);
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
+{% endblock %}

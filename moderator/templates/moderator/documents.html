@@ -1,0 +1,402 @@
+{% extends "base.html" %}
+
+{% block title %}Documentos - Panel del Profesor{% endblock %}
+{% block page_title %}Gestión de Documentos{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Formulario de subida -->
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Subir Nuevo Documento</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data" id="uploadForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label">Título del Documento</label>
+                        <input type="text" name="title" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Curso</label>
+                        <select name="curso" class="form-select" required>
+                            <option value="">Seleccione un curso...</option>
+                            {% for curso in cursos %}
+                            <option value="{{ curso.id }}">{{ curso.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Archivo</label>
+                        <input type="file" name="file" class="form-control" id="fileInput" required 
+                               accept=".txt,.doc,.docx,.pdf">
+                        <small class="text-muted d-block mt-1">
+                            Formatos permitidos: .txt, .doc, .docx, .pdf
+                        </small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Contenido para el Chat</label>
+                        <textarea name="content_text" class="form-control" rows="5" id="contentPreview"
+                                placeholder="Este contenido será usado por el chatbot para responder preguntas. Se extraerá automáticamente del archivo, pero puedes editarlo."
+                                required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-upload me-2"></i>Subir Documento
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de documentos -->
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Mis Documentos</h5>
+                <div class="btn-group">
+                    <button class="btn btn-outline-primary btn-sm" onclick="toggleView('table')">
+                        <i class="fas fa-table me-1"></i>Tabla
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm" onclick="toggleView('grid')">
+                        <i class="fas fa-th-large me-1"></i>Grid
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if documents %}
+                <!-- Vista de tabla -->
+                <div id="tableView" class="view-mode">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Título</th>
+                                    <th>Curso</th>
+                                    <th>Fecha</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for doc in documents %}
+                                <tr>
+                                    <td>{{ doc.title }}</td>
+                                    <td>{{ doc.curso.name }}</td>
+                                    <td>{{ doc.created_at|date:"d/m/Y H:i" }}</td>
+                                    <td>
+                                        <div class="btn-group">
+                                            
+                                            <button class="btn btn-sm btn-outline-info" 
+                                                    onclick="viewExtractedText('{{ doc.id }}', '{{ doc.title }}')">
+                                                <i class="fas fa-file-alt"></i>
+                                            </button>
+                                            <a href="{{ doc.file.url }}" class="btn btn-sm btn-outline-primary" target="_blank">
+                                                <i class="fas fa-download"></i>
+                                            </a>
+                                            
+                                            <a href="{% url 'moderator:delete_document' doc.id %}" 
+                                               class="btn btn-sm btn-outline-danger"
+                                               onclick="return confirm('¿Está seguro de eliminar este documento?')">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Vista de grid -->
+                <div id="gridView" class="view-mode" style="display: none;">
+                    <div class="row g-4">
+                        {% for doc in documents %}
+                        <div class="col-md-6 col-lg-4">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title text-truncate mb-2">
+                                        <i class="fas fa-file-alt text-primary me-2"></i>
+                                        {{ doc.title }}
+                                    </h6>
+                                    <p class="card-text small text-muted mb-3">
+                                        <i class="fas fa-graduation-cap me-1"></i> {{ doc.curso.name }}<br>
+                                        <i class="fas fa-calendar-alt me-1"></i> {{ doc.created_at|date:"d/m/Y H:i" }}
+                                    </p>
+                                    <div class="btn-group w-100">
+                                        <button class="btn btn-sm btn-outline-primary" 
+                                                onclick="previewDocument('{{ doc.id }}', '{{ doc.title }}')">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-info" 
+                                                onclick="viewExtractedText('{{ doc.id }}', '{{ doc.title }}')">
+                                            <i class="fas fa-file-alt"></i>
+                                        </button>
+                                        <a href="{{ doc.file.url }}" class="btn btn-sm btn-outline-primary" target="_blank">
+                                            <i class="fas fa-download"></i>
+                                        </a>
+                                        <button class="btn btn-sm btn-outline-success" 
+                                                onclick="editDocument('{{ doc.id }}')">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <a href="{% url 'moderator:delete_document' doc.id %}" 
+                                           class="btn btn-sm btn-outline-danger"
+                                           onclick="return confirm('¿Está seguro de eliminar este documento?')">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-file-alt fa-3x mb-3 text-muted"></i>
+                    <h5>No hay documentos</h5>
+                    <p class="text-muted">Sube tu primer documento usando el formulario de la izquierda.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Vista Previa -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Vista Previa del Documento</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Contenido del Chat</label>
+                    <textarea class="form-control" id="previewContent" rows="10" readonly></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Texto Extraído -->
+<div class="modal fade" id="extractedTextModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Texto Extraído</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Contenido del Documento</label>
+                    <textarea class="form-control" id="extractedTextContent" rows="15" readonly></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Edición -->
+<div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar Documento</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editForm">
+                    {% csrf_token %}
+                    <input type="hidden" id="editDocumentId" name="document_id">
+                    <div class="mb-3">
+                        <label class="form-label">Contenido del Chat</label>
+                        <textarea class="form-control" id="editContent" name="content_text" rows="10" required></textarea>
+                        <small class="text-muted">
+                            Este contenido es lo que el chatbot usará para responder preguntas sobre el documento.
+                        </small>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        Guardar Cambios
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.table td {
+    vertical-align: middle;
+}
+.btn-group {
+    gap: 0.25rem;
+}
+.card-text {
+    line-height: 1.5;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleView(mode) {
+    const tableView = document.getElementById('tableView');
+    const gridView = document.getElementById('gridView');
+    
+    if (mode === 'table') {
+        tableView.style.display = 'block';
+        gridView.style.display = 'none';
+    } else {
+        tableView.style.display = 'none';
+        gridView.style.display = 'block';
+    }
+}
+
+async function previewDocument(docId, title) {
+    try {
+        const response = await fetch(`/api/documents/${docId}/content/`);
+        if (!response.ok) throw new Error('Error al cargar el contenido');
+        
+        const data = await response.json();
+        document.getElementById('previewContent').value = data.content_text;
+        
+        const modal = new bootstrap.Modal(document.getElementById('previewModal'));
+        modal.show();
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error al cargar el contenido del documento');
+    }
+}
+
+async function viewExtractedText(docId) {
+    try {
+        const response = await fetch(`{% url 'moderator:get_document_text' %}?document_id=${docId}`, {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Error al obtener el texto');
+        }
+
+        const data = await response.json();
+        document.getElementById('extractedTextContent').value = data.text;
+        new bootstrap.Modal(document.getElementById('extractedTextModal')).show();
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error al cargar el texto del documento. Por favor, intente nuevamente.');
+    }
+}
+
+async function editDocument(docId) {
+    try {
+        const response = await fetch(`/api/documents/${docId}/content/`);
+        if (!response.ok) throw new Error('Error al cargar el contenido');
+        
+        const data = await response.json();
+        document.getElementById('editContent').value = data.content_text;
+        document.getElementById('editDocumentId').value = docId;
+        
+        const modal = new bootstrap.Modal(document.getElementById('editModal'));
+        modal.show();
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error al cargar el contenido del documento');
+    }
+}
+
+// Función para extraer texto del documento
+async function extractText(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const response = await fetch('{% url "moderator:extract_text" %}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Error al extraer el texto');
+        }
+
+        const data = await response.json();
+        document.getElementById('contentPreview').value = data.text;
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error al extraer el texto del documento. Por favor, intente nuevamente.');
+    }
+}
+
+// Evento para extraer texto cuando se selecciona un archivo
+document.getElementById('fileInput').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        extractText(file);
+    }
+});
+
+// Manejar el formulario de edición
+document.getElementById('editForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const docId = document.getElementById('editDocumentId').value;
+    const content = document.getElementById('editContent').value;
+    
+    try {
+        const response = await fetch(`/api/documents/${docId}/content/`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({ content_text: content })
+        });
+        
+        if (!response.ok) throw new Error('Error al actualizar el contenido');
+        
+        bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
+        alert('Contenido actualizado correctamente');
+        location.reload();
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error al actualizar el contenido del documento');
+    }
+});
+
+// Extraer contenido del archivo al subirlo
+document.getElementById('fileInput').addEventListener('change', async function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+        const response = await fetch('/api/documents/extract-content/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: formData
+        });
+        
+        if (!response.ok) throw new Error('Error al extraer el contenido');
+        
+        const data = await response.json();
+        document.getElementById('contentPreview').value = data.content;
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error al extraer el contenido del archivo. Por favor, ingresa el contenido manualmente.');
+    }
+});
+</script>
+{% endblock %}

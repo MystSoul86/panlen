@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+
+{% block title %}Gestionar Miembros - {{ curso.name }} - Panlen{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+<div class="container-fluid px-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0">{{ curso.name }}</h1>
+            <p class="text-muted">Gestión de profesores y estudiantes</p>
+        </div>
+        <a href="{% url 'cursos' %}" class="btn btn-outline-primary">
+            <i class="fas fa-arrow-left"></i> Volver a Cursos
+        </a>
+    </div>
+
+    <div class="row">
+        <!-- Profesores -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Profesores</h5>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="selectAllTeachers">
+                        <label class="form-check-label text-white" for="selectAllTeachers">Seleccionar Todos</label>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{% url 'assign_curso_moderators' curso.id %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <div class="user-list" style="max-height: 400px; overflow-y: auto;">
+                                {% for teacher in available_teachers %}
+                                <div class="form-check mb-2 d-flex align-items-center">
+                                    <input class="form-check-input teacher-checkbox" type="checkbox" 
+                                           name="moderators" value="{{ teacher.id }}" 
+                                           id="teacher{{ teacher.id }}"
+                                           {% if teacher in curso.moderators.all %}checked{% endif %}>
+                                    <label class="form-check-label ms-2" for="teacher{{ teacher.id }}">
+                                        <div>
+                                            {{ teacher.get_full_name|default:teacher.username }}
+                                            {% if teacher.specialization %}
+                                            <small class="text-muted d-block">{{ teacher.specialization }}</small>
+                                            {% endif %}
+                                        </div>
+                                    </label>
+                                </div>
+                                {% empty %}
+                                <p class="text-muted">No hay profesores disponibles</p>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Guardar Cambios
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estudiantes -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Estudiantes</h5>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="selectAllStudents">
+                        <label class="form-check-label text-white" for="selectAllStudents">Seleccionar Todos</label>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{% url 'assign_curso_students' curso.id %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <div class="user-list" style="max-height: 400px; overflow-y: auto;">
+                                {% for student in available_students %}
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input student-checkbox" type="checkbox" 
+                                           name="students" value="{{ student.id }}" 
+                                           id="student{{ student.id }}"
+                                           {% if student in curso.members.all %}checked{% endif %}>
+                                    <label class="form-check-label ms-2" for="student{{ student.id }}">
+                                        {{ student.get_full_name|default:student.username }}
+                                    </label>
+                                </div>
+                                {% empty %}
+                                <p class="text-muted">No hay estudiantes disponibles</p>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-save"></i> Guardar Cambios
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Función para manejar "Seleccionar Todos" para profesores
+    const selectAllTeachers = document.getElementById('selectAllTeachers');
+    const teacherCheckboxes = document.querySelectorAll('.teacher-checkbox');
+    
+    selectAllTeachers.addEventListener('change', function() {
+        teacherCheckboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
+        });
+    });
+
+    // Función para manejar "Seleccionar Todos" para estudiantes
+    const selectAllStudents = document.getElementById('selectAllStudents');
+    const studentCheckboxes = document.querySelectorAll('.student-checkbox');
+    
+    selectAllStudents.addEventListener('change', function() {
+        studentCheckboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
+        });
+    });
+
+    // Actualizar estado de "Seleccionar Todos" cuando se cambian checkboxes individuales
+    function updateSelectAll(checkboxes, selectAllCheckbox) {
+        const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+        const someChecked = Array.from(checkboxes).some(cb => cb.checked);
+        selectAllCheckbox.checked = allChecked;
+        selectAllCheckbox.indeterminate = someChecked && !allChecked;
+    }
+
+    teacherCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', () => {
+            updateSelectAll(teacherCheckboxes, selectAllTeachers);
+        });
+    });
+
+    studentCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', () => {
+            updateSelectAll(studentCheckboxes, selectAllStudents);
+        });
+    });
+
+    // Inicializar estados
+    updateSelectAll(teacherCheckboxes, selectAllTeachers);
+    updateSelectAll(studentCheckboxes, selectAllStudents);
+});
+</script>
+{% endblock %}
